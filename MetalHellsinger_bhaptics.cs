@@ -25,13 +25,15 @@ namespace MetalHellsinger_bhaptics
         public override void Load()
         {
             _instance = this;
+            
             // Plugin startup logic
             Log.LogMessage("Plugin MetalHellsinger_bhaptics is loaded!");
             tactsuitVr = new TactsuitVR();
             // one startup heartbeat so you know the vest works correctly
             tactsuitVr.PlaybackHaptics("HeartBeat");
+            
             //init protube if any
-            //InitializeProTube();
+            InitializeProTube();
             // patch all functions
             var harmony = new Harmony("bhaptics.patch.metalhellsinger");
             harmony.PatchAll();

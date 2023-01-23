@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="bHapticsLib" Version="1.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="0Harmony">
       <HintPath>..\..\..\..\GAMES\Metal Hellsinger\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
@@ -36,9 +40,6 @@
     </Reference>
     <Reference Include="BepInEx.Unity.IL2CPP">
       <HintPath>..\..\..\..\GAMES\Metal Hellsinger\BepInEx\core\BepInEx.Unity.IL2CPP.dll</HintPath>
-    </Reference>
-    <Reference Include="Bhaptics.Tact">
-      <HintPath>lib\Bhaptics.Tact.dll</HintPath>
     </Reference>
     <Reference Include="Il2CppInterop.Runtime">
       <HintPath>..\..\..\..\GAMES\Metal Hellsinger\BepInEx\core\Il2CppInterop.Runtime.dll</HintPath>
@@ -62,5 +63,9 @@
       <HintPath>..\..\..\..\GAMES\Metal Hellsinger\BepInEx\unity-libs\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call &quot;D:\bHaptics\MetalHellsinger\Dev\MetalHellsinger_bhaptics\bin\Debug\copy.bat&quot;" />
+  </Target>
 
 </Project>

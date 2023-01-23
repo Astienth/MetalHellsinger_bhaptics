@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading;
-using Bhaptics.Tact;
+using bHapticsLib;
 using MetalHellsinger_bhaptics;
 using UnityEngine;
 
@@ -18,10 +18,6 @@ namespace MyBhapticsTactsuit
         private static ManualResetEvent HeartBeat_mrse = new ManualResetEvent(false);
         // dictionary of all feedback patterns found in the bHaptics directory
         public Dictionary<String, FileInfo> FeedbackMap = new Dictionary<String, FileInfo>();
-
-#pragma warning disable CS0618 // remove warning that the C# library is deprecated
-        public HapticPlayer hapticPlayer;
-#pragma warning restore CS0618 
 
         private static RotationOption defaultRotationOption = new RotationOption(0.0f, 0.0f);
 
@@ -40,14 +36,7 @@ namespace MyBhapticsTactsuit
         {
 
             LOG("Initializing suit");
-            try
-            {
-#pragma warning disable CS0618 // remove warning that the C# library is deprecated
-                hapticPlayer = new HapticPlayer("MetalHellsinger_bhaptics", "MetalHellsinger_bhaptics");
-#pragma warning restore CS0618
-                suitDisabled = false;
-            }
-            catch { LOG("Suit initialization failed!"); }
+            suitDisabled = !bHapticsManager.Connect("MetalHellsinger_bhaptics", "MetalHellsinger_bhaptics");
             RegisterAllTactFiles();
             LOG("Starting HeartBeat thread...");
             Thread HeartBeatThread = new Thread(HeartBeatFunc);
@@ -80,7 +69,7 @@ namespace MyBhapticsTactsuit
                 string tactFileStr = File.ReadAllText(fullName);
                 try
                 {
-                    hapticPlayer.RegisterTactFileStr(prefix, tactFileStr);
+                    bHapticsManager.RegisterPatternFromJson(prefix, tactFileStr);
                     LOG("Pattern registered: " + prefix);
                 }
                 catch (Exception e) { LOG(e.ToString()); }
@@ -96,13 +85,13 @@ namespace MyBhapticsTactsuit
             if (FeedbackMap.ContainsKey(key))
             {
                 ScaleOption scaleOption = new ScaleOption(intensity, duration);
-                if (hapticPlayer.IsPlaying() && !forced)
+                if (bHapticsManager.IsPlaying(key) && !forced)
                 {
                     return;
                 }
                 else
                 {
-                    hapticPlayer.SubmitRegisteredVestRotation(key, key, defaultRotationOption, scaleOption);
+                    bHapticsManager.PlayRegistered(key, key, scaleOption, defaultRotationOption);
                 }
             }
             else
@@ -119,7 +108,7 @@ namespace MyBhapticsTactsuit
             if (suitDisabled) { return; }
             ScaleOption scaleOption = new ScaleOption(1f, 1f);
             RotationOption rotationOption = new RotationOption(xzAngle, yShift);
-            hapticPlayer.SubmitRegisteredVestRotation(key, key, rotationOption, scaleOption);
+            bHapticsManager.PlayRegistered(key, key, scaleOption, rotationOption);
         }
 
         public static KeyValuePair<float, float> getAngleAndShift(Transform player, Vector3 hit)
@@ -174,7 +163,7 @@ namespace MyBhapticsTactsuit
 
         public void StopHapticFeedback(String effect)
         {
-            hapticPlayer.TurnOff(effect);
+            bHapticsManager.StopPlaying(effect);
         }
 
         public void StopAllHapticFeedback()
@@ -182,7 +171,7 @@ namespace MyBhapticsTactsuit
             StopThreads();
             foreach (String key in FeedbackMap.Keys)
             {
-                hapticPlayer.TurnOff(key);
+                bHapticsManager.StopPlaying(key);
             }
         }
 
