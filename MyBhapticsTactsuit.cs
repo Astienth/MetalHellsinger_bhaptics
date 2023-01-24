@@ -45,7 +45,7 @@ namespace MyBhapticsTactsuit
 
         public void LOG(string logStr)
         {
-            Plugin._instance.Log.LogMessage(logStr);
+            Plugin.Log.LogMessage(logStr);
         }
 
 

@@ -20,12 +20,14 @@ namespace MetalHellsinger_bhaptics
         public static TactsuitVR? tactsuitVr;
         public static string configPath = Directory.GetCurrentDirectory() + "\\UserData\\";
         public static bool dualWield = false;
+        public static ManualLogSource Log;
+        public static bool forceTubeConnected = false;
 
 
         public override void Load()
         {
             _instance = this;
-            
+            Log = base.Log;
             // Plugin startup logic
             Log.LogMessage("Plugin MetalHellsinger_bhaptics is loaded!");
             tactsuitVr = new TactsuitVR();
@@ -57,13 +59,17 @@ namespace MetalHellsinger_bhaptics
             ForceTubeVRInterface.FTChannelFile myChannels = JsonConvert.DeserializeObject<ForceTubeVRInterface.FTChannelFile>(ForceTubeVRInterface.ListChannels());
             var pistol1 = myChannels.channels.pistol1;
             var pistol2 = myChannels.channels.pistol2;
+            if(pistol1.Count > 0)
+            {
+                forceTubeConnected = true;
+            }
             if ((pistol1.Count > 0) && (pistol2.Count > 0))
             {
                 dualWield = true;
-                _instance.Log.LogMessage("Two ProTube devices detected, player is dual wielding.");
+                Log.LogMessage("Two ProTube devices detected, player is dual wielding.");
                 if ((readChannel("rightHand") == "") || (readChannel("leftHand") == ""))
                 {
-                    _instance.Log.LogMessage("No configuration files found, saving current right and left hand pistols.");
+                    Log.LogMessage("No configuration files found, saving current right and left hand pistols.");
                     saveChannel("rightHand", pistol1[0].name);
                     saveChannel("leftHand", pistol2[0].name);
                 }
@@ -71,17 +77,13 @@ namespace MetalHellsinger_bhaptics
                 {
                     string rightHand = readChannel("rightHand");
                     string leftHand = readChannel("leftHand");
-                    _instance.Log.LogMessage("Found and loaded configuration. Right hand: " + rightHand + ", Left hand: " + leftHand);
+                    Log.LogMessage("Found and loaded configuration. Right hand: " + rightHand + ", Left hand: " + leftHand);
                     // Channels 4 and 5 are ForceTubeVRChannel.pistol1 and pistol2
                     ForceTubeVRInterface.ClearChannel(4);
                     ForceTubeVRInterface.ClearChannel(5);
                     ForceTubeVRInterface.AddToChannel(4, rightHand);
                     ForceTubeVRInterface.AddToChannel(5, leftHand);
                 }
-            }
-            else
-            {
-                _instance.Log.LogMessage("SINGLE WIELD");
             }
         }
 
@@ -91,6 +93,53 @@ namespace MetalHellsinger_bhaptics
             await ForceTubeVRInterface.InitAsync(true);
             Thread.Sleep(10000);
             dualWieldSort();
+        }
+    }
+
+    [HarmonyPatch(typeof(WeaponAbilityController), "AttackTriggered")]
+    public class bhaptics_OnShooting
+    {
+        [HarmonyPostfix]
+        public static void Postfix(WeaponAbilityController __instance)
+        {
+            //bHaptics
+            if (!Plugin.tactsuitVr.suitDisabled)
+            {
+                Plugin.tactsuitVr.PlaybackHaptics("RecoilVest_R");
+                Plugin.tactsuitVr.PlaybackHaptics("RecoilArm_R");
+            }
+            if (Plugin.forceTubeConnected)
+            {
+                switch (__instance.m_activeWeaponType)
+                {
+                    case PlayerWeaponType.RhythmWeapon:
+                        ForceTubeVRInterface.Shoot(210, 126, 50f, ForceTubeVRChannel.pistol1);
+                        break;
+                    case PlayerWeaponType.Shotgun:
+                        ForceTubeVRInterface.Shoot(255, 200, 100f, ForceTubeVRChannel.pistol1);
+                        break;
+                    case PlayerWeaponType.Falx:
+                        ForceTubeVRInterface.Rumble(126, 50f, ForceTubeVRChannel.pistol1);
+                        break;
+                    default:
+                        ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.pistol1);
+                        break;
+                }
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(DodgeMovementState), "Enter")]
+    public class bhaptics_OnDash
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            if (Plugin.tactsuitVr.suitDisabled)
+            {
+                return;
+            }
+            Plugin.tactsuitVr.PlaybackHaptics("Dash");
         }
     }
 
@@ -105,24 +154,63 @@ namespace MetalHellsinger_bhaptics
                 return;
             }
             Plugin.tactsuitVr.PlaybackHaptics("Death");
+            Plugin.tactsuitVr.StopHeartBeat();
         }
     }
-    /*
-    [HarmonyPatch(typeof(Player), "OnHurt", new Type[] { })]
-    public class bhaptics_OnHurt
+
+    [HarmonyPatch(typeof(Player), "ResurrectPlayer")]
+    public class bhaptics_OnRessurect
     {
         [HarmonyPostfix]
-        public static void Postfix(Player __instance)
+        public static void Postfix()
         {
             if (Plugin.tactsuitVr.suitDisabled)
             {
                 return;
             }
-            var angleShift = TactsuitVR.getAngleAndShift(__instance.HitTransforms.parent, __instance.DamageableComponent.HitObject.transform.position);
-            Plugin.tactsuitVr.PlayBackHit("BulletHit", angleShift.Key, angleShift.Value);
+            Plugin.tactsuitVr.PlaybackHaptics("Death");
         }
     }
-    */
+
+    [HarmonyPatch(typeof(Player), "TakeDamage")]
+    public class bhaptics_OnHurt
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Player __instance, AttackBase attack)
+        {
+            if (Plugin.tactsuitVr.suitDisabled)
+            {
+                return;
+            }
+            var angleShift = TactsuitVR.getAngleAndShift(__instance.PlayerTransform, attack.Position);
+            Plugin.tactsuitVr.PlayBackHit("Impact", angleShift.Key, angleShift.Value); 
+        }
+    }
+
+    [HarmonyPatch(typeof(Player), "IsAtLowHealth")]
+    public class bhaptics_lowhealth
+    {
+        public static bool started = false;
+        [HarmonyPostfix]
+        public static void Postfix(bool __result)
+        {
+            if (Plugin.tactsuitVr.suitDisabled)
+            {
+                return;
+            }
+            if(__result && !started)
+            {
+                Plugin.tactsuitVr.StartHeartBeat();
+                started = true;
+            }
+            if(!__result && started)
+            {
+                Plugin.tactsuitVr.StopHeartBeat();
+                started = false;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Player), "PickUpHealth")]
     public class bhaptics_heal
     {
