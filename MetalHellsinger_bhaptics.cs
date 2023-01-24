@@ -22,6 +22,7 @@ namespace MetalHellsinger_bhaptics
         public static bool dualWield = false;
         public static ManualLogSource Log;
         public static bool forceTubeConnected = false;
+        public static bool hasJumped = false;
 
 
         public override void Load()
@@ -41,58 +42,23 @@ namespace MetalHellsinger_bhaptics
             harmony.PatchAll();
         }
 
-        public static void saveChannel(string channelName, string proTubeName)
-        {
-            string fileName = configPath + channelName + ".pro";
-            File.WriteAllText(fileName, proTubeName, Encoding.UTF8);
-        }
-
-        public static string readChannel(string channelName)
-        {
-            string fileName = configPath + channelName + ".pro";
-            if (!File.Exists(fileName)) return "";
-            return File.ReadAllText(fileName, Encoding.UTF8);
-        }
-
-        public static void dualWieldSort()
-        {
-            ForceTubeVRInterface.FTChannelFile myChannels = JsonConvert.DeserializeObject<ForceTubeVRInterface.FTChannelFile>(ForceTubeVRInterface.ListChannels());
-            var pistol1 = myChannels.channels.pistol1;
-            var pistol2 = myChannels.channels.pistol2;
-            if(pistol1.Count > 0)
-            {
-                forceTubeConnected = true;
-            }
-            if ((pistol1.Count > 0) && (pistol2.Count > 0))
-            {
-                dualWield = true;
-                Log.LogMessage("Two ProTube devices detected, player is dual wielding.");
-                if ((readChannel("rightHand") == "") || (readChannel("leftHand") == ""))
-                {
-                    Log.LogMessage("No configuration files found, saving current right and left hand pistols.");
-                    saveChannel("rightHand", pistol1[0].name);
-                    saveChannel("leftHand", pistol2[0].name);
-                }
-                else
-                {
-                    string rightHand = readChannel("rightHand");
-                    string leftHand = readChannel("leftHand");
-                    Log.LogMessage("Found and loaded configuration. Right hand: " + rightHand + ", Left hand: " + leftHand);
-                    // Channels 4 and 5 are ForceTubeVRChannel.pistol1 and pistol2
-                    ForceTubeVRInterface.ClearChannel(4);
-                    ForceTubeVRInterface.ClearChannel(5);
-                    ForceTubeVRInterface.AddToChannel(4, rightHand);
-                    ForceTubeVRInterface.AddToChannel(5, leftHand);
-                }
-            }
-        }
-
+        /*
+         * There is not real dual wield in this game so I decided not to
+         * manage dual wield
+         **/
         private async void InitializeProTube()
         {
             Log.LogMessage("Initializing ProTube gear...");
             await ForceTubeVRInterface.InitAsync(true);
             Thread.Sleep(10000);
-            dualWieldSort();
+            ForceTubeVRInterface.FTChannelFile myChannels = 
+                JsonConvert.DeserializeObject<ForceTubeVRInterface.FTChannelFile>(
+                    ForceTubeVRInterface.ListChannels()
+                );
+            if (myChannels.channels.pistol1.Count > 0)
+            {
+                forceTubeConnected = true;
+            }
         }
     }
 
@@ -100,13 +66,15 @@ namespace MetalHellsinger_bhaptics
     public class bhaptics_OnShooting
     {
         [HarmonyPostfix]
-        public static void Postfix(WeaponAbilityController __instance)
+        public static void Postfix(WeaponAbilityController __instance, bool onBeat)
         {
             //bHaptics
             if (!Plugin.tactsuitVr.suitDisabled)
-            {
-                Plugin.tactsuitVr.PlaybackHaptics("RecoilVest_R");
-                Plugin.tactsuitVr.PlaybackHaptics("RecoilArm_R");
+            {                
+                Plugin.tactsuitVr.PlaybackHaptics("RecoilVest_R", true, 
+                    (onBeat) ? 2f : 1f, (onBeat) ? 1.5f : 1f);
+                Plugin.tactsuitVr.PlaybackHaptics("RecoilArm_R", true, 
+                    (onBeat) ? 2f : 1f, (onBeat) ? 1.5f : 1f);
             }
             if (Plugin.forceTubeConnected)
             {
@@ -120,6 +88,15 @@ namespace MetalHellsinger_bhaptics
                         break;
                     case PlayerWeaponType.Falx:
                         ForceTubeVRInterface.Rumble(126, 50f, ForceTubeVRChannel.pistol1);
+                        break;
+                    case PlayerWeaponType.Crossbow:
+                        ForceTubeVRInterface.Shoot(255, 255, 50f, ForceTubeVRChannel.pistol1);
+                        break;
+                    case PlayerWeaponType.Pistols:
+                        ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.pistol1);
+                        break;
+                    case PlayerWeaponType.Boomerang:
+                        ForceTubeVRInterface.Rumble(100, 50f, ForceTubeVRChannel.pistol1);
                         break;
                     default:
                         ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.pistol1);
@@ -143,6 +120,39 @@ namespace MetalHellsinger_bhaptics
         }
     }
 
+    [HarmonyPatch(typeof(JumpMovementState), "TriggerJump")]
+    public class bhaptics_OnJump
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            if (Plugin.tactsuitVr.suitDisabled)
+            {
+                return;
+            }
+            Plugin.hasJumped = true;
+            Plugin.tactsuitVr.PlaybackHaptics("OnJump");
+        }
+    }
+    
+    [HarmonyPatch(typeof(FirstPersonController), "OnControllerColliderHit")]
+    public class bhaptics_OnJumpLanding
+    {
+        [HarmonyPostfix]
+        public static void Postfix(FirstPersonController __instance)
+        {
+            if (Plugin.tactsuitVr.suitDisabled)
+            {
+                return;
+            }
+            if (__instance.IsGrounded && Plugin.hasJumped)
+            {
+                Plugin.tactsuitVr.PlaybackHaptics("LandAfterJump");
+                Plugin.hasJumped = false;
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Player), "DieSoftDeath")]
     public class bhaptics_OnDeath
     {
@@ -158,17 +168,19 @@ namespace MetalHellsinger_bhaptics
         }
     }
 
-    [HarmonyPatch(typeof(Player), "ResurrectPlayer")]
+    [HarmonyPatch(typeof(InGameState), "OnResurrectionMenuOptionSelected")]
     public class bhaptics_OnRessurect
     {
         [HarmonyPostfix]
-        public static void Postfix()
+        public static void Postfix(ResurrectionMenuOption option)
         {
-            if (Plugin.tactsuitVr.suitDisabled)
+            if (Plugin.tactsuitVr.suitDisabled || option != ResurrectionMenuOption.Resurrect)
             {
                 return;
             }
-            Plugin.tactsuitVr.PlaybackHaptics("Death");
+            Plugin.tactsuitVr.PlaybackHaptics("Resurect");
+            Plugin.tactsuitVr.PlaybackHaptics("Resurect_L");
+            Plugin.tactsuitVr.PlaybackHaptics("Resurect_R");
         }
     }
 
