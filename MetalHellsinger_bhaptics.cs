@@ -10,6 +10,7 @@ using System.Threading;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
+using BepInEx.Configuration;
 
 namespace MetalHellsinger_bhaptics
 {
@@ -23,12 +24,15 @@ namespace MetalHellsinger_bhaptics
         public static ManualLogSource Log;
         public static bool forceTubeConnected = false;
         public static bool hasJumped = false;
+        public static ConfigEntry<bool> leftHanded;
 
 
         public override void Load()
         {
             _instance = this;
             Log = base.Log;
+            //config
+            leftHanded = Config.Bind("bhaptics", "leftHanded", false);
             // Plugin startup logic
             Log.LogMessage("Plugin MetalHellsinger_bhaptics is loaded!");
             tactsuitVr = new TactsuitVR();
@@ -71,9 +75,11 @@ namespace MetalHellsinger_bhaptics
             //bHaptics
             if (!Plugin.tactsuitVr.suitDisabled)
             {                
-                Plugin.tactsuitVr.PlaybackHaptics("RecoilVest_R", true, 
+                Plugin.tactsuitVr.PlaybackHaptics(
+                    (Plugin.leftHanded.Value) ? "RecoilVest_L" : "RecoilVest_R", true, 
                     (onBeat) ? 2f : 1f, (onBeat) ? 1.5f : 1f);
-                Plugin.tactsuitVr.PlaybackHaptics("RecoilArm_R", true, 
+                Plugin.tactsuitVr.PlaybackHaptics(
+                    (Plugin.leftHanded.Value) ? "RecoilArm_L" : "RecoilArm_R", true, 
                     (onBeat) ? 2f : 1f, (onBeat) ? 1.5f : 1f);
             }
             if (Plugin.forceTubeConnected)
