@@ -100,13 +100,13 @@ namespace MyBhapticsTactsuit
             }
         }
 
-        public void PlayBackHit(String key, float xzAngle, float yShift)
+        public void PlayBackHit(String key, float xzAngle, float yShift, float intensity = 1f)
         {
             // two parameters can be given to the pattern to move it on the vest:
             // 1. An angle in degrees [0, 360] to turn the pattern to the left
             // 2. A shift [-0.5, 0.5] in y-direction (up and down) to move it up or down
             if (suitDisabled) { return; }
-            ScaleOption scaleOption = new ScaleOption(1f, 1f);
+            ScaleOption scaleOption = new ScaleOption(intensity, 1f);
             RotationOption rotationOption = new RotationOption(xzAngle, yShift);
             bHapticsManager.PlayRegistered(key, key, scaleOption, rotationOption);
         }

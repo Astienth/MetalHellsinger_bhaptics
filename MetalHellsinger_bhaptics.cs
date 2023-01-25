@@ -195,7 +195,7 @@ namespace MetalHellsinger_bhaptics
                 return;
             }
             var angleShift = TactsuitVR.getAngleAndShift(__instance.PlayerTransform, attack.Position);
-            Plugin.tactsuitVr.PlayBackHit("Impact", angleShift.Key, angleShift.Value); 
+            Plugin.tactsuitVr.PlayBackHit("Impact", angleShift.Key, angleShift.Value, 4f); 
         }
     }
 
