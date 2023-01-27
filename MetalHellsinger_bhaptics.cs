@@ -22,7 +22,6 @@ namespace MetalHellsinger_bhaptics
         public static string configPath = Directory.GetCurrentDirectory() + "\\UserData\\";
         public static bool dualWield = false;
         public static ManualLogSource Log;
-        public static bool forceTubeConnected = false;
         public static bool hasJumped = false;
         public static ConfigEntry<bool> leftHanded;
 
@@ -55,14 +54,6 @@ namespace MetalHellsinger_bhaptics
             Log.LogMessage("Initializing ProTube gear...");
             await ForceTubeVRInterface.InitAsync(true);
             Thread.Sleep(10000);
-            ForceTubeVRInterface.FTChannelFile myChannels = 
-                JsonConvert.DeserializeObject<ForceTubeVRInterface.FTChannelFile>(
-                    ForceTubeVRInterface.ListChannels()
-                );
-            if (myChannels.channels.pistol1.Count > 0)
-            {
-                forceTubeConnected = true;
-            }
         }
     }
 
@@ -82,32 +73,29 @@ namespace MetalHellsinger_bhaptics
                     (Plugin.leftHanded.Value) ? "RecoilArm_L" : "RecoilArm_R", true, 
                     (onBeat) ? 2f : 1f, (onBeat) ? 1.5f : 1f);
             }
-            if (Plugin.forceTubeConnected)
+            switch (__instance.m_activeWeaponType)
             {
-                switch (__instance.m_activeWeaponType)
-                {
-                    case PlayerWeaponType.RhythmWeapon:
-                        ForceTubeVRInterface.Shoot(210, 126, 50f, ForceTubeVRChannel.pistol1);
-                        break;
-                    case PlayerWeaponType.Shotgun:
-                        ForceTubeVRInterface.Shoot(255, 200, 100f, ForceTubeVRChannel.pistol1);
-                        break;
-                    case PlayerWeaponType.Falx:
-                        ForceTubeVRInterface.Rumble(126, 50f, ForceTubeVRChannel.pistol1);
-                        break;
-                    case PlayerWeaponType.Crossbow:
-                        ForceTubeVRInterface.Shoot(255, 255, 50f, ForceTubeVRChannel.pistol1);
-                        break;
-                    case PlayerWeaponType.Pistols:
-                        ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.pistol1);
-                        break;
-                    case PlayerWeaponType.Boomerang:
-                        ForceTubeVRInterface.Rumble(100, 50f, ForceTubeVRChannel.pistol1);
-                        break;
-                    default:
-                        ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.pistol1);
-                        break;
-                }
+                case PlayerWeaponType.RhythmWeapon:
+                    ForceTubeVRInterface.Shoot(210, 126, 50f, ForceTubeVRChannel.all);
+                    break;
+                case PlayerWeaponType.Shotgun:
+                    ForceTubeVRInterface.Shoot(255, 200, 100f, ForceTubeVRChannel.all);
+                    break;
+                case PlayerWeaponType.Falx:
+                    ForceTubeVRInterface.Rumble(126, 50f, ForceTubeVRChannel.all);
+                    break;
+                case PlayerWeaponType.Crossbow:
+                    ForceTubeVRInterface.Shoot(255, 255, 50f, ForceTubeVRChannel.all);
+                    break;
+                case PlayerWeaponType.Pistols:
+                    ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.all);
+                    break;
+                case PlayerWeaponType.Boomerang:
+                    ForceTubeVRInterface.Rumble(100, 50f, ForceTubeVRChannel.all);
+                    break;
+                default:
+                    ForceTubeVRInterface.Kick(210, ForceTubeVRChannel.all);
+                    break;
             }
         }
     }

@@ -162,7 +162,7 @@ public class ForceTubeVRInterface : MonoBehaviour
     public static bool LoadChannelJSon()
     {
         string path = Application.persistentDataPath;
-        string filePath = path + "/UserData/ProTube/Channels.json";
+        string filePath = path + "BepInEx/plugins/Provolver_bHaptics/Channels.json";
         Debug.Log("filePath : " + filePath);
         string dataAsJson = File.ReadAllText(filePath);
         return  ForceTubeVRInterface.InitChannels(dataAsJson);
@@ -172,7 +172,7 @@ public class ForceTubeVRInterface : MonoBehaviour
     {
         string sText = ForceTubeVRInterface.ListChannels();
         string path = Application.persistentDataPath;
-        string filePath = path + "/UserData/ProTubeChannels.json";
+        string filePath = path + "BepInEx/plugins/Provolver_bHaptics/ProTubeChannels.json";
         Debug.Log("filePath : " + filePath);
         File.WriteAllText(filePath, sText);
         return true;
