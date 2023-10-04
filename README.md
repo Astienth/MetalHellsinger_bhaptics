@@ -5,6 +5,8 @@
 This mod adds provolver support to the game.
 Compatible with provolver and bHaptics tactsuit and tactosy
 
+☕ If you wanna show some support you can buy me a coffee : https://www.buymeacoffee.com/astienth4
+
 # Installation
 
 1. **Download** [the VR Mod](https://github.com/LivingFray/HellsingerVR) if you wanna play in VR, **install** it and **Run** the game once.
